@@ -17,7 +17,7 @@ namespace AutoMakeSQL
         /// <summary>
         /// 設定路徑
         /// </summary>
-        private static readonly string Path = $@".\Data\setting.txt";
+        private static readonly string Path = $@".\Data\setting.json";
         /// <summary>
         /// 建構式
         /// </summary>

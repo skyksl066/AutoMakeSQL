@@ -348,7 +348,7 @@ namespace AutoMakeSQL
         private string LoadSetting(string key)
         {
             string result = string.Empty;
-            using (FileStream fileStream = new FileStream($@".\Data\setting.txt", FileMode.Open))
+            using (FileStream fileStream = new FileStream($@".\Data\setting.json", FileMode.Open))
             {
                 if (fileStream.Length == 0)
                     return "";
@@ -384,18 +384,24 @@ namespace AutoMakeSQL
                 MessageBox.Show(this, "尚未設定連線參數!", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
-            bool connoet = ConnectButton.Text == "Connect";
-            ConnectButton.Text = connoet ? "Disconnect" : "Connect";
-            ConnectButton.BackColor = connoet ? Color.Green : Color.Red;
-            if (connoet)
+            if (ConnectButton.Text == "Connect")
             {
-                if (Connection())
+                try
                 {
-                    BeginTransaction();
-                    CommitButton.Enabled = true;
-                    ExecuteButton.Enabled = true;
-                    RollbackButton.Enabled = true;
+                    Connect = new OracleConnection(ConnectionString);
+                    Connect.Open();
                 }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(this, ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+                BeginTransaction();
+                CommitButton.Enabled = true;
+                ExecuteButton.Enabled = true;
+                RollbackButton.Enabled = true;
+                ConnectButton.Text = "Disconnect";
+                ConnectButton.BackColor = Color.Green;
             }
             else
             {
@@ -403,6 +409,8 @@ namespace AutoMakeSQL
                 CommitButton.Enabled = false;
                 ExecuteButton.Enabled = false;
                 RollbackButton.Enabled = false;
+                ConnectButton.Text = "Connect";
+                ConnectButton.BackColor = Color.Red;
             }
         }
 
@@ -446,18 +454,14 @@ namespace AutoMakeSQL
             Command = Connect.CreateCommand();
             Command.Transaction = Transaction;
         }
-        private bool Connection()
+
+        /// <summary>
+        /// 連線
+        /// </summary>
+        /// <returns>成功 success 失敗 錯誤代碼</returns>
+        private void Connection()
         {
-            try
-            {
-                Connect = new OracleConnection(ConnectionString);
-                Connect.Open();
-                return true;
-            }
-            catch
-            {
-                return false;
-            }
+
         }
 
         /// <summary>
