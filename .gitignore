@@ -361,3 +361,6 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+/AutoMakeSQL/Default.cs
+/AutoMakeSQL/Oracle.DataAccess.Common.Configuration.Section.xsd
+/AutoMakeSQL/Oracle.ManagedDataAccess.Client.Configuration.Section.xsd

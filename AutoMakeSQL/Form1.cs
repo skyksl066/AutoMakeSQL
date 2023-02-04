@@ -56,16 +56,70 @@ namespace AutoMakeSQL
             InitializeSetting();
         }
 
+        #region Form事件
+
+        /// <summary>
+        /// 視窗載入事件
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void Form1_Load(object sender, EventArgs e)
+        {
+            string Dir = @".\Data";
+            using (FileStream fileStream = new FileStream($@"{Dir}\PLSql.txt", FileMode.OpenOrCreate))
+            {
+                using (var sr = new StreamReader(fileStream))
+                {
+                    string[] temp = sr.ReadToEnd().Split(new char[1] { '\n' });
+                    autocompleteMenu1.Items = temp.Length > 0 ? temp : autocompleteMenu1.Items;
+                }
+            };
+        }
+
+        /// <summary>
+        /// 視窗關閉事件
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void Form1_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            if (SaveFilePath == null)
+            {
+                var result = MessageBox.Show("尚未存檔是否存檔?", "警告", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+                if (result == DialogResult.Yes)
+                {
+                    SaveAS();
+                }
+            }
+            else
+            {
+                StateSave(SaveFilePath);
+            }
+            Connect?.Close();
+        }
+
+        /// <summary>
+        /// 視窗變換大小事件
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void Form1_SizeChange(object sender, EventArgs e)
+        {
+            BoxResize();
+        }
+
+        #endregion
+
+        #region 按鈕事件
+
         /// <summary>
         /// borwse按鈕
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
-        private void button_browse_Click(object sender, EventArgs e)
+        private void Button_browse_Click(object sender, EventArgs e)
         {
-            openFileDialog1.Filter = "CSV (逗號分隔)(*.csv)|*.csv|All files (*.*)|*.*";
-            if (openFileDialog1.ShowDialog() == DialogResult.OK)
-                textBox_path.Text = openFileDialog1.FileName;
+            OpenFile();
         }
 
         /// <summary>
@@ -73,7 +127,7 @@ namespace AutoMakeSQL
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
-        private void convent_button_Click(object sender, EventArgs e)
+        private void Convent_button_Click(object sender, EventArgs e)
         {
             if (textBox_path.Text == "")
                 return;
@@ -140,239 +194,6 @@ namespace AutoMakeSQL
         }
 
         /// <summary>
-        /// 視窗變換大小事件
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void Form1_SizeChange(object sender, EventArgs e)
-        {
-            BoxResize();
-        }
-
-        /// <summary>
-        /// 視窗載入事件
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void Form1_Load(object sender, EventArgs e)
-        {
-            string Dir = @".\Data";
-            using (FileStream fileStream = new FileStream($@"{Dir}\PLSql.txt", FileMode.OpenOrCreate))
-            {
-                using (var sr = new StreamReader(fileStream))
-                {
-                    string[] temp = sr.ReadToEnd().Split(new char[1] { '\n' });
-                    autocompleteMenu1.Items = temp.Length > 0 ? temp : autocompleteMenu1.Items;
-                }
-            };
-        }
-
-        /// <summary>
-        /// 視窗關閉事件
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void Form1_FormClosing(object sender, FormClosingEventArgs e)
-        {
-            string Dir = @".\Data";
-            StateSave();
-            using (FileStream fileStream = new FileStream($@"{Dir}\PLSql.txt", FileMode.OpenOrCreate))
-            {
-                using (var sr = new StreamWriter(fileStream))
-                {
-                    sr.Write(string.Join("\n", autocompleteMenu1.Items));
-                }
-            };
-            if (Connect != null)
-            {
-                Connect.Close();
-            }
-        }
-
-        private void BoxResize()
-        {
-            int rigthX = 17;
-            int liftX = Width / 2 + 10;
-            int rigthWidth = Math.Abs(richTextBox_inputRepeat.Location.X + Width / 2) - 50;
-
-            #region rigth
-            richTextBox_inputRepeat.Size = new Size(rigthWidth
-                , Math.Abs(Height - richTextBox_inputRepeat.Location.Y) - 50 - MessageListBox.Size.Height - 20);
-            #endregion
-            label2.Location = new Point(liftX, 120);
-            richTextBox_output.Location = new Point(liftX, 140);
-            richTextBox_output.Size = new Size(Math.Abs(richTextBox_output.Location.X - Width) - 30
-                , Math.Abs(Height - richTextBox_output.Location.Y) - 50 - MessageListBox.Size.Height - 20);
-
-            Console.WriteLine($"richTextBox_output {richTextBox_output.Width} {richTextBox_output.Height}");
-            #region bottom
-            MessageListBox.Location = new Point(rigthX, 120 + richTextBox_output.Size.Height + 30);
-            MessageListBox.Size = new Size(Width - 48, 104);
-            #endregion
-        }
-
-        /// <summary>
-        /// 存格子的資料
-        /// </summary>
-        private void StateSave()
-        {
-
-            string Dir = @".\Data";
-            if (SaveFilePath == null)
-            {
-                if (!Directory.Exists(Dir))
-                {
-                    Directory.CreateDirectory(Dir);
-                }
-                SaveFilePath = $@"{Dir}\{DateTime.Now:yyyyMMddHHmmss}.txt";
-            }
-            using (FileStream fileStream = new FileStream(SaveFilePath, FileMode.OpenOrCreate))
-            {
-                var d = new Dictionary<string, string>();
-                foreach (var item in new string[] { "richTextBox_inputHeader", "richTextBox_output", "textBox_symbol", "richTextBox_inputRepeat" })
-                {
-                    foreach (Control c in this.Controls)
-                    {
-                        if (c.Name == item)
-                        {
-                            d.Add(c.Name, c.Text);
-                        }
-                    }
-                }
-                using (var sr = new StreamWriter(fileStream))
-                {
-                    sr.Write(JsonConvert.SerializeObject(d));
-                }
-            };
-        }
-
-        private void richTextBox_input_TextChanged(object sender, EventArgs e)
-        {
-            int s_start = richTextBox_inputRepeat.SelectionStart, startIndex = 0;
-            var words = richTextBox_inputRepeat.Text.Split(new char[] { '(', ')', ' ', '\n' }, StringSplitOptions.RemoveEmptyEntries);
-            for (int i = 0; i < words.Length; i++)
-            {
-                int index = richTextBox_inputRepeat.Text.IndexOf(words[i], startIndex);
-                richTextBox_inputRepeat.Select(index, words[i].Length);
-                richTextBox_inputRepeat.SelectionColor = autocompleteMenu1.Items
-                .Where(x => x.Contains(words[i].ToUpper()) && x.Length == words[i].Length).Count() > 0
-                ? Color.Blue : Color.Black;
-                startIndex = index + words[i].Length;
-            }
-            richTextBox_inputRepeat.SelectionStart = s_start;
-            richTextBox_inputRepeat.SelectionLength = 0;
-            richTextBox_inputRepeat.SelectionColor = Color.Black;
-        }
-
-        /// <summary>
-        /// 結束按鈕
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void ExitToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            Close();
-        }
-
-        /// <summary>
-        /// 另存先檔按鈕
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void SaveAsToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            if (saveFileDialog1.ShowDialog() == DialogResult.OK)
-            {
-                SaveFilePath = saveFileDialog1.FileName;
-                StateSave();
-            }
-        }
-
-        /// <summary>
-        /// 開啟檔案按鈕
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void OpenToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            openFileDialog1.Filter = "文字文件(*.txt)|*.txt|All files (*.*)|*.*";
-            if (openFileDialog1.ShowDialog() != DialogResult.OK)
-                return;
-            SaveFilePath = openFileDialog1.FileName;
-            using (FileStream fileStream = new FileStream(SaveFilePath, FileMode.Open))
-            {
-                using (var sr = new StreamReader(fileStream))
-                {
-                    var d = JsonConvert.DeserializeObject<Dictionary<string, string>>(sr.ReadToEnd());
-                    foreach (var item in d)
-                    {
-                        try
-                        {
-                            this.Controls[item.Key].Text = item.Value;
-                        }
-                        catch { }
-                    }
-                }
-            };
-        }
-
-        /// <summary>
-        /// 開啟程式後60秒自動存檔一次
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void timer1_Tick(object sender, EventArgs e)
-        {
-            StateSave();
-        }
-
-        /// <summary>
-        /// 顯示設定視窗
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void SettingToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            var SettingForm = new Setting
-            {
-                StartPosition = FormStartPosition.CenterParent
-            };
-            SettingForm.Show(this);
-        }
-
-        /// <summary>
-        /// 讀取設定
-        /// </summary>
-        /// <param name="key"></param>
-        /// <returns></returns>
-        private string LoadSetting(string key)
-        {
-            string result = string.Empty;
-            using (FileStream fileStream = new FileStream($@".\Data\setting.json", FileMode.Open))
-            {
-                if (fileStream.Length == 0)
-                    return "";
-                using (var sr = new StreamReader(fileStream))
-                {
-                    var t = sr.ReadToEnd();
-                    var d = JsonConvert.DeserializeObject<Dictionary<string, string>>(t);
-                    result = d[key];
-                }
-            }
-            return result;
-        }
-
-        /// <summary>
-        /// 初始化設定
-        /// </summary>
-        public void InitializeSetting()
-        {
-            new Setting().InitializeSetting();
-            timer1.Interval = AuotSaveInterval;
-            ConnectionString = LoadSetting("ConnectRichTextBox");
-        }
-
-        /// <summary>
         /// 連線按鈕
         /// </summary>
         /// <param name="sender"></param>
@@ -414,6 +235,11 @@ namespace AutoMakeSQL
             }
         }
 
+        /// <summary>
+        /// Execute按鈕
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private void ExecuteButton_Click(object sender, EventArgs e)
         {
             string[] sqls = richTextBox_output.Text.Split(new string[] { ";\n", ";" }, StringSplitOptions.RemoveEmptyEntries);
@@ -436,48 +262,75 @@ namespace AutoMakeSQL
             }
         }
 
+        /// <summary>
+        /// Rollback按鈕
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private void RollbackButton_Click(object sender, EventArgs e)
         {
             Transaction.Rollback();
             BeginTransaction();
         }
 
+        /// <summary>
+        /// Commit按鈕
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private void CommitButton_Click(object sender, EventArgs e)
         {
             Transaction.Commit();
             BeginTransaction();
         }
 
-        private void BeginTransaction()
-        {
-            Transaction = Connect.BeginTransaction(IsolationLevel.ReadCommitted);
-            Command = Connect.CreateCommand();
-            Command.Transaction = Transaction;
-        }
+        #endregion
+
+        #region Menu事件
 
         /// <summary>
-        /// 連線
-        /// </summary>
-        /// <returns>成功 success 失敗 錯誤代碼</returns>
-        private void Connection()
-        {
-
-        }
-
-        /// <summary>
-        /// ctrl + c 可複製訊息窗
+        /// 結束按鈕
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
-        private void MessageListBox_KeyDown(object sender, KeyEventArgs e)
+        private void ExitToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            if (e.Control == true && e.KeyCode == Keys.C)
+            Close();
+        }
+
+        /// <summary>
+        /// 另存新檔按鈕
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void SaveAsToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (SaveFilePath == null)
             {
-                string s = MessageListBox.SelectedItem.ToString();
-                Clipboard.SetData(DataFormats.StringFormat, s);
+                SaveAS();
+            }
+            else
+            {
+                StateSave(SaveFilePath);
             }
         }
 
+        /// <summary>
+        /// 顯示設定視窗
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void SettingToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            var SettingForm = new Setting();
+            SettingForm.ShowDialog(this);
+        }
+
+        /// <summary>
+        /// 複製按鈕
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private void CopyToolStripMenuItem_Click(object sender, EventArgs e)
         {
             var menuItem = sender as ToolStripItem;
@@ -498,6 +351,11 @@ namespace AutoMakeSQL
             Clipboard.SetText(string.Join(Environment.NewLine, text));
         }
 
+        /// <summary>
+        /// 貼上按鈕
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private void PasteToolStripMenuItem_Click(object sender, EventArgs e)
         {
             string text = Clipboard.GetText();
@@ -514,6 +372,11 @@ namespace AutoMakeSQL
             }
         }
 
+        /// <summary>
+        /// 右鍵清單開啟事件
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private void ContextMenuStrip_Opening(object sender, CancelEventArgs e)
         {
             var menu = sender as ContextMenuStrip;
@@ -528,5 +391,231 @@ namespace AutoMakeSQL
                     break;
             }
         }
+
+        /// <summary>
+        /// 開啟暫存按鈕
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void TempToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            openFileDialog1.Filter = "文字文件(*.txt)|*.txt|All files (*.*)|*.*";
+            if (openFileDialog1.ShowDialog() != DialogResult.OK)
+                return;
+            SaveFilePath = openFileDialog1.FileName;
+            using (FileStream fileStream = new FileStream(SaveFilePath, FileMode.Open))
+            {
+                using (var sr = new StreamReader(fileStream))
+                {
+                    var d = JsonConvert.DeserializeObject<Dictionary<string, string>>(sr.ReadToEnd());
+                    foreach (var item in d)
+                    {
+                        try
+                        {
+                            this.Controls[item.Key].Text = item.Value;
+                        }
+                        catch { }
+                    }
+                }
+            };
+        }
+
+        /// <summary>
+        /// 開啟檔案事件
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void FileToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            OpenFile();
+        }
+
+        #endregion
+
+        #region Change事件
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void RichTextBox_input_TextChanged(object sender, EventArgs e)
+        {
+            int s_start = richTextBox_inputRepeat.SelectionStart, startIndex = 0;
+            var words = richTextBox_inputRepeat.Text.Split(new char[] { '(', ')', ' ', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+            for (int i = 0; i < words.Length; i++)
+            {
+                int index = richTextBox_inputRepeat.Text.IndexOf(words[i], startIndex);
+                richTextBox_inputRepeat.Select(index, words[i].Length);
+                richTextBox_inputRepeat.SelectionColor = autocompleteMenu1.Items
+                .Where(x => x.Contains(words[i].ToUpper()) && x.Length == words[i].Length).Count() > 0
+                ? Color.Blue : Color.Black;
+                startIndex = index + words[i].Length;
+            }
+            richTextBox_inputRepeat.SelectionStart = s_start;
+            richTextBox_inputRepeat.SelectionLength = 0;
+            richTextBox_inputRepeat.SelectionColor = Color.Black;
+        }
+
+        #endregion
+
+        #region KeyDown事件
+
+        /// <summary>
+        /// ctrl + c 可複製訊息窗
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void MessageListBox_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Control == true && e.KeyCode == Keys.C)
+            {
+                string s = MessageListBox.SelectedItem.ToString();
+                Clipboard.SetData(DataFormats.StringFormat, s);
+            }
+        }
+
+        #endregion
+
+        #region Func
+
+        /// <summary>
+        /// 開啟檔案事件
+        /// </summary>
+        private void OpenFile()
+        {
+            openFileDialog1.Filter = "CSV (逗號分隔)(*.csv)|*.csv|All files (*.*)|*.*";
+            if (openFileDialog1.ShowDialog() == DialogResult.OK)
+                textBox_path.Text = openFileDialog1.FileName;
+        }
+
+        /// <summary>
+        /// 重新計算物件大小
+        /// </summary>
+        private void BoxResize()
+        {
+            int rigthX = 17;
+            int liftX = Width / 2 + 10;
+            int rigthWidth = Math.Abs(richTextBox_inputRepeat.Location.X + Width / 2) - 50;
+
+            #region rigth
+            richTextBox_inputRepeat.Size = new Size(rigthWidth
+                , Math.Abs(Height - richTextBox_inputRepeat.Location.Y) - 50 - MessageListBox.Size.Height - 20);
+            #endregion
+            label2.Location = new Point(liftX, 120);
+            richTextBox_output.Location = new Point(liftX, 140);
+            richTextBox_output.Size = new Size(Math.Abs(richTextBox_output.Location.X - Width) - 30
+                , Math.Abs(Height - richTextBox_output.Location.Y) - 50 - MessageListBox.Size.Height - 20);
+
+            Console.WriteLine($"richTextBox_output {richTextBox_output.Width} {richTextBox_output.Height}");
+            #region bottom
+            MessageListBox.Location = new Point(rigthX, 120 + richTextBox_output.Size.Height + 30);
+            MessageListBox.Size = new Size(Width - 48, 104);
+            #endregion
+        }
+
+        /// <summary>
+        /// 存格子的資料
+        /// </summary>
+        /// <param name="path"></param>
+        private void StateSave(string path)
+        {
+
+            //string Dir = @".\Data";
+            //if (SaveFilePath == null)
+            //{
+            //    if (!Directory.Exists(Dir))
+            //    {
+            //        Directory.CreateDirectory(Dir);
+            //    }
+            //    SaveFilePath = $@"{Dir}\{DateTime.Now:yyyyMMddHHmmss}.txt";
+            //}
+            using (FileStream fileStream = new FileStream(path, FileMode.OpenOrCreate))
+            {
+                var d = new Dictionary<string, string>();
+                foreach (var item in new string[] { "richTextBox_inputHeader", "richTextBox_output",
+                    "textBox_symbol", "richTextBox_inputRepeat", "textBox_path" })
+                {
+                    foreach (Control c in this.Controls)
+                    {
+                        if (c.Name == item)
+                        {
+                            d.Add(c.Name, c.Text);
+                        }
+                    }
+                }
+                using (var sr = new StreamWriter(fileStream))
+                {
+                    sr.Write(JsonConvert.SerializeObject(d));
+                }
+            };
+        }
+
+        /// <summary>
+        /// 另存新檔
+        /// </summary>
+        private void SaveAS()
+        {
+            if (saveFileDialog1.ShowDialog() == DialogResult.OK)
+            {
+                SaveFilePath = saveFileDialog1.FileName;
+                StateSave(SaveFilePath);
+            }
+        }
+
+        /// <summary>
+        /// 讀取設定
+        /// </summary>
+        /// <param name="key"></param>
+        /// <returns></returns>
+        private string LoadSetting(string key)
+        {
+            string result = string.Empty;
+            using (FileStream fileStream = new FileStream($@".\Data\setting.json", FileMode.Open))
+            {
+                if (fileStream.Length == 0)
+                    return "";
+                using (var sr = new StreamReader(fileStream))
+                {
+                    var t = sr.ReadToEnd();
+                    var d = JsonConvert.DeserializeObject<Dictionary<string, string>>(t);
+                    result = d[key];
+                }
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// 初始化設定
+        /// </summary>
+        public void InitializeSetting()
+        {
+            new Setting().InitializeSetting();
+            timer1.Interval = AuotSaveInterval;
+            ConnectionString = LoadSetting("ConnectRichTextBox");
+        }
+
+        /// <summary>
+        /// 開啟一個Transaction
+        /// </summary>
+        private void BeginTransaction()
+        {
+            Transaction = Connect.BeginTransaction(IsolationLevel.ReadCommitted);
+            Command = Connect.CreateCommand();
+            Command.Transaction = Transaction;
+        }
+
+        #endregion
+
+        /// <summary>
+        /// 開啟程式後60秒自動存檔一次
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void Timer1_Tick(object sender, EventArgs e)
+        {
+            //StateSave();
+        }
+
     }
 }
