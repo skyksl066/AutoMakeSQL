@@ -27,6 +27,7 @@ namespace AutoMakeSQL
         /// 連線參數
         /// </summary>
         private string ConnectionString { get; set; }
+        private bool UnSave { get; set; }
         /// <summary>
         /// 初始化連線
         /// </summary>
@@ -74,6 +75,7 @@ namespace AutoMakeSQL
                     autocompleteMenu1.Items = temp.Length > 0 ? temp : autocompleteMenu1.Items;
                 }
             };
+            UnSave = false;
         }
 
         /// <summary>
@@ -83,17 +85,20 @@ namespace AutoMakeSQL
         /// <param name="e"></param>
         private void Form1_FormClosing(object sender, FormClosingEventArgs e)
         {
-            if (SaveFilePath == null)
+            if (UnSave)
             {
-                var result = MessageBox.Show("尚未存檔是否存檔?", "警告", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
-                if (result == DialogResult.Yes)
+                if (SaveFilePath == null)
                 {
-                    SaveAS();
+                    var result = MessageBox.Show("尚未存檔是否存檔?", "警告", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+                    if (result == DialogResult.Yes)
+                    {
+                        SaveAS();
+                    }
                 }
-            }
-            else
-            {
-                StateSave(SaveFilePath);
+                else
+                {
+                    StateSave(SaveFilePath);
+                }
             }
             Connect?.Close();
         }
@@ -106,6 +111,28 @@ namespace AutoMakeSQL
         private void Form1_SizeChange(object sender, EventArgs e)
         {
             BoxResize();
+        }
+
+        /// <summary>
+        /// 在窗體輸入
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void Form1_KeyDown(object sender, KeyEventArgs e)
+        {
+            var form = sender as Form;
+            var type = form.ActiveControl.GetType().Name;
+            switch (type)
+            {
+                case "RichTextBox":
+                    UnSave = true;
+                    this.Text = "沒路用小工具*";
+                    break;
+                case "TextBox":
+                    UnSave = true;
+                    this.Text = "沒路用小工具*";
+                    break;
+            }
         }
 
         #endregion
@@ -385,9 +412,11 @@ namespace AutoMakeSQL
             {
                 case "RichTextBox":
                     PasteToolStripMenuItem.Enabled = true;
+                    SelectAllToolStripMenuItem.Enabled = true;
                     break;
                 case "ListBox":
                     PasteToolStripMenuItem.Enabled = false;
+                    SelectAllToolStripMenuItem.Enabled = false;
                     break;
             }
         }
@@ -403,21 +432,28 @@ namespace AutoMakeSQL
             if (openFileDialog1.ShowDialog() != DialogResult.OK)
                 return;
             SaveFilePath = openFileDialog1.FileName;
-            using (FileStream fileStream = new FileStream(SaveFilePath, FileMode.Open))
+            try
             {
-                using (var sr = new StreamReader(fileStream))
+                using (FileStream fileStream = new FileStream(SaveFilePath, FileMode.Open))
                 {
-                    var d = JsonConvert.DeserializeObject<Dictionary<string, string>>(sr.ReadToEnd());
-                    foreach (var item in d)
+                    using (var sr = new StreamReader(fileStream))
                     {
-                        try
+                        var d = JsonConvert.DeserializeObject<Dictionary<string, string>>(sr.ReadToEnd());
+                        foreach (var item in d)
                         {
-                            this.Controls[item.Key].Text = item.Value;
+                            try
+                            {
+                                this.Controls[item.Key].Text = item.Value;
+                            }
+                            catch { }
                         }
-                        catch { }
                     }
-                }
-            };
+                };
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
         /// <summary>
@@ -428,6 +464,25 @@ namespace AutoMakeSQL
         private void FileToolStripMenuItem_Click(object sender, EventArgs e)
         {
             OpenFile();
+        }
+
+        /// <summary>
+        /// 全選按鈕
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void SelectAllToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            var menuItem = sender as ToolStripItem;
+            var owner = menuItem.Owner as ContextMenuStrip;
+            var type = owner.SourceControl.GetType().Name;
+            switch (type)
+            {
+                case "RichTextBox":
+                    var RichTextBox = owner.SourceControl as RichTextBox;
+                    RichTextBox.SelectAll();
+                    break;
+            }
         }
 
         #endregion
@@ -520,16 +575,7 @@ namespace AutoMakeSQL
         /// <param name="path"></param>
         private void StateSave(string path)
         {
-
-            //string Dir = @".\Data";
-            //if (SaveFilePath == null)
-            //{
-            //    if (!Directory.Exists(Dir))
-            //    {
-            //        Directory.CreateDirectory(Dir);
-            //    }
-            //    SaveFilePath = $@"{Dir}\{DateTime.Now:yyyyMMddHHmmss}.txt";
-            //}
+            File.Delete(path);
             using (FileStream fileStream = new FileStream(path, FileMode.OpenOrCreate))
             {
                 var d = new Dictionary<string, string>();
@@ -549,6 +595,8 @@ namespace AutoMakeSQL
                     sr.Write(JsonConvert.SerializeObject(d));
                 }
             };
+            this.Text = "沒路用小工具";
+            UnSave = false;
         }
 
         /// <summary>
@@ -616,6 +664,7 @@ namespace AutoMakeSQL
         {
             //StateSave();
         }
+
 
     }
 }
